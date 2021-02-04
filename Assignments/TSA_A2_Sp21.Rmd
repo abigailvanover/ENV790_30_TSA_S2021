@@ -1,7 +1,7 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
 subtitle: "Assignment 2 - Due date 02/05/21"
-author: "Student Name"
+author: "Abi Vanover"
 output: pdf_document
 geometry: margin=2.54cm
 ---
@@ -21,6 +21,7 @@ R packages needed for this assignment:"forecast","tseries", and "dplyr". Install
 
 ```{r}
 #Load/install required package here
+pacman::p_load(forecast, tseries, dplyr)
 
 ```
 
@@ -29,8 +30,14 @@ R packages needed for this assignment:"forecast","tseries", and "dplyr". Install
 
 Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx" on our **Data** folder. The data comes from the US Energy Information and Administration and corresponds to the January 2021 Monthly Energy Review. The spreadsheet is ready to be used. Use the command $read.table()$ to import the data in R or $panda.read\_excel()$ in Python (note that you will need to import pandas package). }
 
-```{r}
+```{r data work}
 #Importing data set
+
+library(readxl)
+Df1 <- read_excel("Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx", 
++     skip = 9)
+View(Df1)
+
 
 ```
 
@@ -38,21 +45,71 @@ Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Produ
 ## Question 1
 You will work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series only. Use the command head() to verify your data.
 
+```{r Q1}
+
+library(dplyr)
+
+df2 <- data.frame(Df1$`Total Biomass Energy Production`, Df1$`Total Renewable Energy Production`, Df1$`Hydroelectric Power Consumption`)
+
+head(df2)
+
+```
 ## Question 2
+
 Transform your data frame in a time series object and specify the starting point and frequency of the time series using the function ts().
+
+```{r Q2}
+
+require(lubridate)
+
+
+newdf <- sapply(df2, as.numeric) %>% as.data.frame()
+
+as.numeric(df2)
+
+df3 <-ts(df2, start = 1, end = 575,  frequency = 1, numeric(575))
+
+df4 <- ts(data = df2, start = 1, end = 575, frequency=1, matrix)
+
+```
 
 ## Question 3
 Compute mean and standard deviation for these three series.
 
+```{r Q3}
+
+mean(df3)
+sd(df3)
+
+mean(df2$Df1..Total.Biomass.Energy.Production.)
+
+```
+
 ## Question 4
 Display and interpret the time series plot for each of these variables. Try to make your plot as informative as possible by writing titles, labels, etc. For each plot add a horizontal line at the mean of each series in a different color.
+
+```{r Q4}
+plot(BM)
+plot(HD)
+plot(tsB)
+```
 
 ## Question 5
 Compute the correlation between these three series. Are they significantly correlated? Explain your answer.
 
+```{r Q5}
+
+
+```
 ## Question 6
-Compute the autocorrelation function from lag 1 up to lag 40 for these three variables. What can you say about these plots? Do the three of them have the same behavior?
+Compute the autocorrelation function from lag 1 up to lag 40 for these three variables. What can you say about these plots? Do the three of them have the same behavior?{
+
+```{r Q6}
+
+```
 
 ## Question 7
 Compute the partial autocorrelation function from lag 1 to lag 40 for these three variables. How these plots differ from the ones in Q6?
+```{r Q7}
 
+```
