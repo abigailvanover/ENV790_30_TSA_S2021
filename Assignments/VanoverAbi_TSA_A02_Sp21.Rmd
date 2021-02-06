@@ -1,0 +1,154 @@
+---
+title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
+subtitle: "Assignment 2 - Due date 02/05/21"
+author: "Abi Vanover"
+output: pdf_document
+geometry: margin=2.54cm
+---
+
+```{r Packges}
+
+pacman::p_load(forecast, tseries, dplyr, lubridate)
+
+```
+
+
+## Data set information  
+
+Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx" on our **Data** folder. The data comes from the US Energy Information and Administration and corresponds to the January 2021 Monthly Energy Review. The spreadsheet is ready to be used. Use the command $read.table()$ to import the data in R or $panda.read\_excel()$ in Python (note that you will need to import pandas package). }
+
+```{r data work}
+#Importing data set
+
+library(readxl)
+Df1 <- read_excel("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",skip = 9)
+View(Df1)
+
+
+```
+
+
+## Question 1
+You will work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series only. Use the command head() to verify your data.
+
+```{r Q1}
+
+dates <- Df1[2:575, 1]
+variables <- Df1[2:575, 4:6]
+
+workingdf <- cbind(dates,variables)
+
+head(workingdf)
+
+biomass <- as.numeric(variables$`Total Biomass Energy Production`)
+renewable <- as.numeric(variables$`Total Renewable Energy Production`)
+hydro <- as.numeric(variables$`Hydroelectric Power Consumption`)
+
+```
+
+## Question 2
+
+
+```{r Q2}
+
+#creating each variable as an individual ts to use for plotting later
+tsbiomass <- ts(workingdf$`Total Biomass Energy Production`, start = 1973, end = 2020, frequency = 12)
+
+tsrenew <- ts(variables$`Total Renewable Energy Production`, start = 1973, end = 2020, frequency = 12)
+
+tshydro <- ts(variables$`Hydroelectric Power Consumption`, start = 1973, end = 2020, frequency = 12)
+
+
+#transforming my dataframe into one time series object
+tsdf <- ts(workingdf[2:575, 2:4], start = 1973, end = 2020, frequency= 12)
+
+```
+
+## Question 3
+Compute mean and standard deviation for these three series.
+
+```{r Q3}
+#Trying again for mean & Sd, converting to numeric
+
+x <- mean(as.numeric(tsbiomass))
+sd(as.numeric(tsbiomass))
+
+y <- mean(as.numeric(tsrenew))
+sd(as.numeric(tsrenew))
+
+z <- mean(as.numeric(tshydro))
+sd(as.numeric(tshydro))
+
+
+```
+
+## Question 4
+
+```{r Q4}
+#This is working now 
+
+plot(tsbiomass, xlab = "Time", ylab = "Total Biomass Energy Production")
+abline(h=x, col = "dodgerblue")
+
+#This plot is fine and just needs a line
+plot(tsrenew, xlab = "Time", ylab = "Total Biomass Energy Production")
+abline(h=y, col = "dodgerblue")
+
+
+#This plot is fine and just needs a line to get added
+plot(tshydro, xlab = "Time", ylab = "Total Renewable Energy Production")
+abline(h=z, col = "darkcyan")
+
+
+```
+
+## Question 5
+
+Total biomass and total renewables are significantly positively correlated, with a value of ~.923. This makes sense as total biomass would be a component of total renewables. Renewables and Hydro consumption are not correlated; the value is essentially zero. Biomass production and Hydroelectric power consumption are slightly negatively correlated, which is reasonable as well: as biomass energy production increases, it can be inferred that it would replace some hydroelectric power. 
+
+```{r Q5, echo = FALSE}
+#Correlation Tests
+
+cor.test(biomass, renewable)
+#.923, Biofuels & Total Biomass
+
+cor.test(renewable, hydro)
+#-.00275 
+
+cor.test(biomass, hydro)
+#-.256, Biomass & Total Renewables
+
+```
+
+## Question 6
+
+The plots for Biomass and Total Renewables are very similar, with high initial values of autocorrelation that decrease over time. However, the plot for Hydroelectric Power Consumption is significantly different. The autocorrelation plot for Hydro shows several peaks and valleys, with maximums decreasing over time. Several of these values are also negative, which were not present on either of the two previous plots. 
+
+
+```{r Q6}
+acfb=acf(biomass, lag.max = 40, type = "correlation") #decreasing at a shallow slope
+acfr=acf(renewable, lag.max = 40, type = "correlation") #smoother decline
+acfh=acf(hydro, lag.max = 40, type = "correlation") #decreasing sharper, wave pattern
+
+acfb
+acfr
+acfh
+
+```
+
+## Question 7
+
+These plots are all very similar to each other, but differ sharply from the initial ACF plots for the Biomass & Total Renewables. For Biomass & Renewables, the ACF plots had a steadily decreasing trendline of all positive values. However, the PACF shows a more cyclical trend of values, with both negative and positive values. For all plots though, the absolute values of the PACF's are lower than the absolute values of ACF's. 
+
+
+```{r Q7}
+pacfb=pacf(biomass, lag.max = 40) #shrinking waves, decreasing over time
+pacfr=pacf(renewable, lag.max = 40) #similar pattern, but sharper
+pacfh=pacf(hydro, lag.max = 40) #similar pattern, but slightly wider range
+
+
+pacfb
+pacfr
+pacfh
+
+```

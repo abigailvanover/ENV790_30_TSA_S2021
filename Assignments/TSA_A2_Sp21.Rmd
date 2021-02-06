@@ -34,8 +34,7 @@ Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Produ
 #Importing data set
 
 library(readxl)
-Df1 <- read_excel("Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx", 
-+     skip = 9)
+Df1 <- read_excel("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx",skip = 9)
 View(Df1)
 
 
@@ -49,9 +48,21 @@ You will work only with the following columns: Total Biomass Energy Production, 
 
 library(dplyr)
 
-df2 <- data.frame(Df1$`Total Biomass Energy Production`, Df1$`Total Renewable Energy Production`, Df1$`Hydroelectric Power Consumption`)
+require(lubridate)
 
-head(df2)
+dates <- Df1[2:575, 1]
+variables <- Df1[2:575, 3:5]
+
+workingdf <- cbind(dates,variables)
+#need to remove the first row
+#need to do something about the NA's -- look up old stat notes for that
+
+head(workingdf)
+
+#errors: all formats failed to parse. no formats found with these functions. How do I remove the UTC?
+#my(dates)
+#head(dates)
+#ymd(dates)
 
 ```
 ## Question 2
@@ -60,16 +71,11 @@ Transform your data frame in a time series object and specify the starting point
 
 ```{r Q2}
 
-require(lubridate)
+BP <- ts(workingdf[2:575, 2], start = 1973, end = 2020)
+TBEP <- ts(workingdf[2:575, 3], start = 1973, end = 2020)
+TREP <- ts(workingdf[2:575, 4], start = 1973, end = 2020)
 
-
-newdf <- sapply(df2, as.numeric) %>% as.data.frame()
-
-as.numeric(df2)
-
-df3 <-ts(df2, start = 1, end = 575,  frequency = 1, numeric(575))
-
-df4 <- ts(data = df2, start = 1, end = 575, frequency=1, matrix)
+tsdf <- ts(workingdf[2:575, 2:4], start = 1973, end = 2020, frequency= 1)
 
 ```
 
@@ -77,11 +83,25 @@ df4 <- ts(data = df2, start = 1, end = 575, frequency=1, matrix)
 Compute mean and standard deviation for these three series.
 
 ```{r Q3}
+#converting to numeric form for calculation
+b1 <- as.factor(workingdf$`Biofuels Production`)
+b11 <- as.numeric(b1)
 
-mean(df3)
-sd(df3)
+tb1 <- as.factor(workingdf$`Total Biomass Energy Production`)
+tb2 <- as.numeric(tb1)
 
-mean(df2$Df1..Total.Biomass.Energy.Production.)
+tr1 <- as.factor(workingdf$`Total Renewable Energy Production`)
+tr2 <- as.numeric(tr1)
+
+#calculating the means and sd's of the series
+mean(b11)
+sd(b11)
+
+mean(tb2)
+sd(tb2)
+
+mean(tr2)
+sd(tr2)
 
 ```
 
@@ -89,27 +109,50 @@ mean(df2$Df1..Total.Biomass.Energy.Production.)
 Display and interpret the time series plot for each of these variables. Try to make your plot as informative as possible by writing titles, labels, etc. For each plot add a horizontal line at the mean of each series in a different color.
 
 ```{r Q4}
-plot(BM)
-plot(HD)
-plot(tsB)
+#need to get the lines to show, shoot an email tomorrow to the TA
+
+
+plot(BP, xlab = "Time", ylab = "Biofuels Production")
+abline(h=mean(b11), col = "cornflower blue")
+
+plot(TBEP, xlab = "Time", ylab = "Total Biomass Energy Production")
+abline(h=mean(tb2), col = "dodgerblue")
+
+plot(TREP, xlab = "Time", ylab = "Total Renewable Energy Production")
+abline(h=mean(tr2), col = "brickred")
 ```
 
 ## Question 5
 Compute the correlation between these three series. Are they significantly correlated? Explain your answer.
 
-```{r Q5}
+```{r Q5, echo = FALSE}
+#Correlation Tests
+
+cor.test(b11, tb2)
+cor.test(tb2, tr2)
+cor.test(tr2, b11)
 
 
+#Biomass and Renewables are significantly positively correlated
+#The others are slightly negatively correlated
 ```
 ## Question 6
 Compute the autocorrelation function from lag 1 up to lag 40 for these three variables. What can you say about these plots? Do the three of them have the same behavior?{
 
 ```{r Q6}
+acfb=acf(b11, lag.max = 40, type = "correlation")
+acftb=acf(tb2, lag.max = 40, type = "correlation")
+acftr=acf(tr2, lag.max = 40, type = "correlation")
 
+#Examine the behaviors of the plots tomorrow when more coherent
 ```
 
 ## Question 7
 Compute the partial autocorrelation function from lag 1 to lag 40 for these three variables. How these plots differ from the ones in Q6?
 ```{r Q7}
+pacfb=pacf(b11, lag.max = 40)
+pacftb=pacf(tb2, lag.max = 40)
+pacftr=pacf(tr2, lag.max = 40)
 
+#Take a look at the plots tomorrow, ask TA or Luana about how to handle the NA's
 ```
