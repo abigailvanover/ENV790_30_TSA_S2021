@@ -1,0 +1,231 @@
+---
+title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
+subtitle: "Assignment 3 - Due date 02/15/21"
+author: "Abi Vanover"
+output: pdf_document
+geometry: margin=2.54cm
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
+
+```{r initial, echo=FALSE}
+#Load/install required package here
+pacman::p_load("forecast", "tseries", "Kendall")
+
+```
+
+```{r data importing, echo=FALSE}
+library(readxl)
+tsd <- read_excel("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx", skip = 9)
+
+tsd <- na.omit(tsd)
+
+biomass <- as.numeric(tsd$`Total Biomass Energy Production`)
+renewables <- as.numeric(tsd$`Total Renewable Energy Production`)
+hydro <- as.numeric(tsd$`Hydroelectric Power Consumption`)
+
+workingdf <- cbind(biomass, renewables, hydro)
+
+workingts <- ts(workingdf, start = 1973, end = 2020, frequency = 12)
+
+series <- ncol(workingdf)
+
+```
+
+## Trend Component
+
+### Q1
+
+```{r retrying, echo=FALSE, message=FALSE}
+#attempt
+for(z in 1:series){
+  par(mfrow=c(3,3))
+  pacf(workingdf[,z], lag.max=40, main=paste("Series", colnames(workingdf)[z], sep=""))
+  acf(workingdf[,z], lag.max=40, type="correlation", main=paste("Series", colnames(workingdf)[z], sep=""))
+  plot(workingdf[,z], xlab="Time", ylab=(paste0("Series",colnames(workingdf)[z],sep="")))
+}
+```
+
+### Q2
+
+Total Renewable Energy Production and Total Biomass Energy Production both appear to have an increasing trend. However, Hydroelectric Power Consumption appears to have a seasonal component to it. 
+
+
+### Q3
+
+For biomass production, the intercept value at time 0 (1973) for the trend line is 135.5, with the value growing by a factor of .47 by each additional time period.
+
+Renewables production also has a positive trend line, with an intercept value at time 0 of 330.37 and a positive slope of .84 (the value of production increases by a factor of .84 for each time period). 
+
+Hydroelectric Power Consumption has a trend line that crosses the intercept at 258.06 at time 0, and which has a slope of -.07--each additional year causes a slight decrease in the consumption value. 
+
+```{r Q3, echo=FALSE}
+nobs <- nrow(workingdf)
+q <- c(1:nobs)
+
+bm <- lm(biomass ~ q)
+summary(bm)
+b0 <- as.numeric(bm$coefficients[1])
+b1 <- as.numeric(bm$coefficients[2])
+
+rn <- lm(renewables ~ q)
+summary(rn)
+r0 <- as.numeric(rn$coefficients[1])
+r1 <- as.numeric(rn$coefficients[2])
+
+hy <- lm(hydro ~ q)
+summary(hy)
+h0 <- as.numeric(hy$coefficients[1])
+h1 <- as.numeric(hy$coefficients[2])
+
+``` 
+### Q4
+
+
+```{r Q4, echo=FALSE}
+#detrending and comparison
+#remove the trend from series
+
+detrend_bio <- biomass-(b0+b1*q)
+
+detrend_renew <- renewables-(r0+r1*q)
+
+detrend_hydro <- hydro-(h0+h1*q)
+
+detrenddf <- cbind(detrend_bio, detrend_renew, detrend_hydro)
+detrenddf <- ts(detrenddf, start = 1973, end = 2020, frequency = 12)
+
+par(mfrow=c(1,3))
+plot(detrenddf[,1], xlab="Time", ylab="Total Biomass Energy Production")
+plot(detrenddf[,2], xlab="Time", ylab="Total Renewable Energy Production")
+plot(detrenddf[,3], xlab="Time", ylab="Hydroelectric Power Consumption")
+
+```
+For Total Biomass Production, the plot has become more dramatic. It has a significant decrease and increase that wasn't visible on the original plot. The original plot looked like a pretty staid and solid upward-growing trend, with a varying plateau in the middle. On this second plot, the period of fluctuations has a clear downward slope, which makes the next period increase all the more remarkable, and is shown to have a steeper slope on this plot. 
+
+This new plot for Total Renewables shows that the initial part of the series did have a mean over time that hovered  around 0, but that the second-half growth is steeper than it initially appeared. The detrended plot actually shows how the trend decreases before it increases, making the growth look even larger than it did on the initial plot. 
+
+As for the Hydroelectric Consumption, these plots look almost exactly the same. This was expected though, as it did not exhibit a linear trend. This series is much more likely to show a change when accounting for seasonality.
+
+
+### Q5
+For Biomass and Renewables, the ACF plots look a litle steeper, with some more firmly pronounced peaks and minimums as the values decrease. However, the overall pattern is the same. The ACF plot for Hydroelectric Power Consumption looks unchanged. 
+
+Most of the PACF plots look changed from the original plots.
+
+
+```{r q5, echo=FALSE}
+#ACF & PACF series
+par(mfrow=c(1,3))
+acf(detrenddf[,1], lag.max=40, type = "correlation", main = "Biomass Production Series")
+
+acf(detrenddf[,2], lag.max=40, type = "correlation", main = "Renewable Production Series")
+
+acf(detrenddf[,3], lag.max=40, type = "correlation", main = "Hydroelectric Power Consumption Series")
+
+#PACF plots
+par(mfrow=c(1,3))
+pacf(detrenddf[,1], lag.max=40, main = "Biomass Production")
+pacf(detrenddf[,2], lag.max=40, main = "Renewable Production")
+pacf(detrenddf[,3], lag.max=40, main = "Hydroelectric Power Consumption")
+
+
+```
+
+## Seasonal Component
+
+Set aside the detrended series and consider the original series again from Q1 to answer Q6 to Q8.
+
+### Q6
+
+The Hydroelectric Power Consumption series has a seasonal trend, but the others do not. For the seasonal means model created, there is an intercept value of 238.89 at time 0 in 1973, and each month has values that show correlation with either negative or positive growth. The dummy variable coefficients reveal how much growth or decrease in the consumption value can be attributed to the month--which range from -49.7 in September to +40.89 in May. 
+
+```{r Q6, echo=FALSE}
+#Use seasonal means model
+
+dummies <- seasonaldummy(workingts[,3])  
+nobs <- nrow(workingts)
+
+dummyb <- seasonaldummy(workingts[,1])
+dummyr <- seasonaldummy(workingts[,2])
+
+#Then fit a linear model to the seasonal dummies
+seas_means_model=lm(workingts[,3]~dummies)
+smmb <- lm(workingts[,1] ~ dummyb)
+smmr <- lm(workingts[,2] ~ dummyr)
+summary(seas_means_model)
+summary(smmb)
+summary(smmr)
+
+#Store regression coefficients
+beta_int=seas_means_model$coefficients[1]
+beta_coeff=seas_means_model$coefficients[2:12]
+beta1b=smmb$coefficients[1]
+beta2b=smmb$coefficients[2:12]
+beta1r=smmb$coefficients[1]
+beta2r=smmb$coefficients[2:12]
+
+#compute seasonal component
+hydro_seas_comp=array(0,nobs)
+for(i in 1:nobs){
+  hydro_seas_comp[i]=(beta_int+beta_coeff%*%dummies[i,])
+}
+
+biomass_seas_comp=array(0,nobs)
+for(i in 1:nobs){
+  biomass_seas_comp[i]=(beta1b+beta2b%*%dummyb[i,])
+}
+
+renewables_seas_comp=array(0,nobs)
+for(i in 1:nobs){
+  renewables_seas_comp[i]=(beta1r+beta2r%*%dummyr[i,])
+}
+
+#Removing seasonal component
+deseason_hydro <- workingts[,3]-hydro_seas_comp
+deseason_biomass <- workingts[,1]-biomass_seas_comp
+deseason_renewables <- workingts[,2]-renewables_seas_comp
+```
+### Q7
+
+For Hydroelectric Consumption, the plot looks a lot clearer--it's much easier to pick out trends of increase and decrease. There seems to be much less noise to the plot. 
+
+For Biomass and Renewables, the plots did not change at all. 
+
+```{r Q7, echo=FALSE}
+#Deseasoning--might need some help on this
+par(mfrow=c(1,2))
+plot(deseason_hydro, xlab="Time", ylab="Hydroelectric Power Consumption", main="Deseasoned Hydroelectric Data", col="darkcyan")
+plot(workingts[,3], xlab="Time", ylab="Hydroelectric Power Consumption", main="Original Data", col="dodgerblue")
+
+par(mfrow=c(1,2))
+plot(deseason_renewables, xlab="Time", ylab="Total Renewable Production", main="Deseasoned Renewables Data", col="darkslategray4")
+plot(workingts[,2], xlab="Time", ylab="Total Renewables Production", main="Original Data", col="darkseagreen4")
+
+par(mfrow=c(1,2))
+plot(deseason_biomass, xlab="Time", ylab="Biomass Production", main="Deseasoned Biomass Data", col="coral1")
+plot(workingts[,1], xlab="Time", ylab="Biomass Production", main="Original Data", col="coral4")
+
+
+```
+### Q8
+
+For biomass and renewables, the ACF & PACF for the deseasoned series did not change at all. The hydro plots though changed dramatically. The ACF is no longer swinging wildly, and looks like the other plots that didn't have seasonality in them. It's now just a steadily declining plot as the lag decreases. The PACF also has a lot less variation between the values, and has a much more consistent pattern. The values also seem to be lower overall. 
+
+```{r Q8, echo=FALSE}
+par(mfrow=c(1,2))
+acf(deseason_hydro, lag.max=40, type="correlation")
+pacf(deseason_hydro, lag.max=40)
+
+par(mfrow=c(1,2))
+acf(deseason_renewables, lag.max=40, type="correlation")
+pacf(deseason_renewables, lag.max=40)
+
+par(mfrow=c(1,2))
+acf(deseason_biomass, lag.max=40, type="correlation")
+acf(deseason_biomass, lag.max=40)
+
+```
